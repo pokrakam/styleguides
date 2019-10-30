@@ -51,6 +51,7 @@ The [Cheat Sheet](cheat-sheet/CheatSheet.md) is a print-optimized version.
   - [Prefer LINE_EXISTS to READ TABLE or LOOP AT](#prefer-line_exists-to-read-table-or-loop-at)
   - [Prefer READ TABLE to LOOP AT](#prefer-read-table-to-loop-at)
   - [Prefer LOOP AT WHERE to nested IF](#prefer-loop-at-where-to-nested-if)
+  - [Avoid unnecessary table reads](#avoid-unnecessary-table-reads)
 - [Strings](#strings)
   - [Use ` to define literals](#use--to-define-literals)
   - [Use | to assemble text](#use--to-assemble-text)
@@ -61,6 +62,7 @@ The [Cheat Sheet](cheat-sheet/CheatSheet.md) is a print-optimized version.
   - [Use XSDBOOL to set Boolean variables](#use-xsdbool-to-set-boolean-variables)
 - [Conditions](#conditions)
   - [Try to make conditions positive](#try-to-make-conditions-positive)
+  - [Prefer IS NOT to NOT IS](#prefer-is-not-to-not-is)
   - [Consider decomposing complex conditions](#consider-decomposing-complex-conditions)
   - [Consider extracting complex conditions](#consider-extracting-complex-conditions)
 - [Ifs](#ifs)
@@ -77,7 +79,7 @@ The [Cheat Sheet](cheat-sheet/CheatSheet.md) is a print-optimized version.
     - [Prefer composition to inheritance](#prefer-composition-to-inheritance)
     - [Don't mix stateful and stateless in the same class](#dont-mix-stateful-and-stateless-in-the-same-class)
   - [Scope](#scope)
-    - [Global by default, local only in exceptional cases](#global-by-default-local-only-in-exceptional-cases)
+    - [Global by default, local only where appropriate](#global-by-default-local-only-where-appropriate)
     - [FINAL if not designed for inheritance](#final-if-not-designed-for-inheritance)
     - [Members PRIVATE by default, PROTECTED only if needed](#members-private-by-default-protected-only-if-needed)
     - [Consider using immutable instead of getter](#consider-using-immutable-instead-of-getter)
@@ -85,8 +87,8 @@ The [Cheat Sheet](cheat-sheet/CheatSheet.md) is a print-optimized version.
   - [Constructors](#constructors)
     - [Prefer NEW to CREATE OBJECT](#prefer-new-to-create-object)
     - [If your global class is CREATE PRIVATE, leave the CONSTRUCTOR public](#if-your-global-class-is-create-private-leave-the-constructor-public)
-    - [Prefer multiple static factory methods to optional parameters](#prefer-multiple-static-factory-methods-to-optional-parameters)
-    - [Use descriptive names for multiple constructor methods](#use-descriptive-names-for-multiple-constructor-methods)
+    - [Prefer multiple static creation methods to optional parameters](#prefer-multiple-static-creation-methods-to-optional-parameters)
+    - [Use descriptive names for multiple creation methods](#use-descriptive-names-for-multiple-creation-methods)
     - [Make singletons only where multiple instances don't make sense](#make-singletons-only-where-multiple-instances-dont-make-sense)
 - [Methods](#methods)
   - [Calls](#calls)
@@ -94,6 +96,7 @@ The [Cheat Sheet](cheat-sheet/CheatSheet.md) is a print-optimized version.
     - [Omit RECEIVING](#omit-receiving)
     - [Omit the optional keyword EXPORTING](#omit-the-optional-keyword-exporting)
     - [Omit the parameter name in single parameter calls](#omit-the-parameter-name-in-single-parameter-calls)
+    - [Omit the self-reference me when calling an instance method](#omit-the-self-reference-me-when-calling-an-instance-method)
   - [Methods: Object orientation](#methods-object-orientation)
     - [Prefer instance to static methods](#prefer-instance-to-static-methods)
     - [Public instance methods should be part of an interface](#public-instance-methods-should-be-part-of-an-interface)
@@ -124,6 +127,8 @@ The [Cheat Sheet](cheat-sheet/CheatSheet.md) is a print-optimized version.
     - [CHECK vs. RETURN](#check-vs-return)
     - [Avoid CHECK in other positions](#avoid-check-in-other-positions)
 - [Error Handling](#error-handling)
+  - [Messages](#messages)
+    - [Make messages easy to find](#make-messages-easy-to-find)
   - [Return Codes](#return-codes)
     - [Prefer exceptions to return codes](#prefer-exceptions-to-return-codes)
     - [Don't let failures slip through](#dont-let-failures-slip-through)
@@ -154,7 +159,9 @@ The [Cheat Sheet](cheat-sheet/CheatSheet.md) is a print-optimized version.
   - [Don't add method signature and end-of comments](#dont-add-method-signature-and-end-of-comments)
   - [Don't duplicate message texts as comments](#dont-duplicate-message-texts-as-comments)
   - [ABAP Doc only for public APIs](#abap-doc-only-for-public-apis)
+  - [Prefer pragmas to pseudo comments](#prefer-pragmas-to-pseudo-comments)
 - [Formatting](#formatting)
+  - [Be consistent](#be-consistent)
   - [Optimize for reading, not for writing](#optimize-for-reading-not-for-writing)
   - [Use the Pretty Printer before activating](#use-the-pretty-printer-before-activating)
   - [Use your Pretty Printer team settings](#use-your-pretty-printer-team-settings)
@@ -192,7 +199,7 @@ The [Cheat Sheet](cheat-sheet/CheatSheet.md) is a print-optimized version.
     - [Extract the call to the code under test to its own method](#extract-the-call-to-the-code-under-test-to-its-own-method)
   - [Injection](#injection)
     - [Use dependency inversion to inject test doubles](#use-dependency-inversion-to-inject-test-doubles)
-    - [Use CL_ABAP_TESTDOUBLE](#use-cl_abap_testdouble)
+    - [Consider to use the tool ABAP test double](#consider-to-use-the-tool-abap-test-double)
     - [Exploit the test tools](#exploit-the-test-tools)
     - [Use test seams as temporary workaround](#use-test-seams-as-temporary-workaround)
     - [Use LOCAL FRIENDS to access the dependency-inverting constructor](#use-local-friends-to-access-the-dependency-inverting-constructor)
@@ -218,7 +225,7 @@ The [Cheat Sheet](cheat-sheet/CheatSheet.md) is a print-optimized version.
     - [Use FAIL to check for expected exceptions](#use-fail-to-check-for-expected-exceptions)
     - [Forward unexpected exceptions instead of catching and failing](#forward-unexpected-exceptions-instead-of-catching-and-failing)
     - [Write custom asserts to shorten code and avoid duplication](#write-custom-asserts-to-shorten-code-and-avoid-duplication)
-    
+
 ## How to
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [This section](#how-to)
@@ -253,16 +260,38 @@ and should only be addressed by teams that already saw proof of Clean Code's pos
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [How to](#how-to) > [This section](#how-to-refactor-legacy-code)
 
-The topics [Booleans](#booleans), [Conditions](#conditions), [Ifs](#ifs), and [Methods](#methods)
-are most rewarding if you are working on a legacy project with tons of code that you cannot or do not want to change:
-they can be applied to new code without conflicts, and may be applied to old code following the boy scout rule
-_("always leave the code you're editing a little better than you found it")_.
+The topics [Booleans](#booleans), [Conditions](#conditions), [Ifs](#ifs),
+and [Methods](#methods) are most rewarding if you are working on a legacy project
+with tons of code that you cannot or do not want to change
+because they can be applied to new code without conflicts.
 
 The topic [Names](#names) is very demanding for legacy projects,
 as it may introduce a breach between old and new code,
 up to a degree where sections like
 [Avoid encodings, esp. Hungarian notation and prefixes](#avoid-encodings-esp-hungarian-notation-and-prefixes)
 are better ignored.
+
+We observed good results with a four-step plan for refactoring:
+
+1. Get the team aboard. Communicate and explain the new style,
+and get everybody on the project team to agree to it.
+You don't need to commit all guidelines at once, just start
+with an undisputed small subset and evolve from there.
+
+2. Follow the _boy scout rule_ to your daily work routine:
+_always leave the code you edit a little cleaner than you found it_.
+Don't obsess with this by sinking hours into "cleaning the campsite",
+just spend a couple of minutes extra and observe how the
+improvements accumulate over time.
+
+3. Build _clean islands_: from time to time, pick a small object or component and
+try to make it clean in all aspects. These islands demonstrate the benefit
+of what you're doing and form solidly tested home bases for further refactoring.
+
+4. Talk about it. No matter whether you set up old-school [Fagan code reviews](https://en.wikipedia.org/wiki/Fagan_inspection),
+hold info sessions, or form discussion boards in your favorite chat tool:
+you will need to talk about your experiences and learnings, to enable the
+team to grow a common understanding.
 
 ### How to Check Automatically
 
@@ -277,6 +306,8 @@ some checks that may help you find certain issues.
 [abapOpenChecks](https://github.com/larshp/abapOpenChecks),
 an Open Source collection of Code Inspector checks,
 also covers some of the described anti-patterns.
+
+[abaplint](https://github.com/abaplint/abaplint) is an open source reimplementation of the ABAP parser. It works without a SAP system and is meant to be used on code serialized using abapGit. It offers multiple integrations (GitHub Actions, Jenkins, text editors...), covers some of the antipatterns and can also be used to check formatting and code conventions.
 
 ### How to Relate to Other Guides
 
@@ -352,9 +383,9 @@ Search for good names in the solution domain, i.e. computer science terms such a
 and in the problem domain, i.e. business field terms such as "account" or "ledger".
 
 Layers that are business-like will sound best when named according to the problem domain.
-This is especially true for components that are design with Domain-Driven Design, such as APIs and business objects.
+This is especially true for components that are designed with Domain-Driven Design, such as APIs and business objects.
 
-Layers that provide mostly technical functionality, such as factory classes and abstract algorithm,
+Layers that provide mostly technical functionality, such as factory classes and abstract algorithms,
 will sound best when named according to the solution domain.
 
 In any case, do not attempt to make up your own language.
@@ -448,13 +479,17 @@ FUNCTION /clean/read_alerts
 
 Omit noise words
 
-    account  " instead of account_data
-    alert    " instead of alert_object
+```ABAP
+account  " instead of account_data
+alert    " instead of alert_object
+```
 
 or replace them with something specific that really adds value
 
-    user_preferences          " instead of user_info
-    response_time_in_seconds  " instead of response_time_variable
+```ABAP
+user_preferences          " instead of user_info
+response_time_in_seconds  " instead of response_time_variable
+```
 
 > Read more in _Chapter 2: Meaningful Names: Make Meaningful Distinctions_ of [Robert C. Martin's _Clean Code_]
 
@@ -551,20 +586,20 @@ Try to build things in a clean, object-oriented way.
 If something is too slow, make a performance measurement.
 Only then should you take a fact-based decision to discard selected rules.
 
-Some further thoughts, taken in part from Chapter 2 of 
+Some further thoughts, taken in part from Chapter 2 of
 [Martin Fowler's _Refactoring_](https://martinfowler.com/books/refactoring.html):
 
-In a typical application the majority of the runtime is spent in a very small proportion 
-of the code. As little as 10% of the code can account for 90% of the runtime, and especially 
-in ABAP a large proportion of runtime is likely to be database time. 
+In a typical application the majority of the runtime is spent in a very small proportion
+of the code. As little as 10% of the code can account for 90% of the runtime, and especially
+in ABAP a large proportion of runtime is likely to be database time.
 
-Thus it is not the best use of resources to spend significant effort on trying to make _all_ 
-code super-efficient all the time. We're not suggesting ignoring performance, but rather 
-focus more on clean and well structured code during initial development, and use the 
-profiler to identify critical areas to optimize. 
+Thus it is not the best use of resources to spend significant effort on trying to make _all_
+code super-efficient all the time. We're not suggesting ignoring performance, but rather
+focus more on clean and well structured code during initial development, and use the
+profiler to identify critical areas to optimize.
 
-In fact, we would argue that such an approach will have a net positive effect on performance 
-because it is a more targeted optimization effort, and it should be easier 
+In fact, we would argue that such an approach will have a net positive effect on performance
+because it is a more targeted optimization effort, and it should be easier
 to identify performance bottlenecks and easier to refactor and tune well structured code.
 
 ### Prefer object orientation to procedural programming
@@ -741,7 +776,7 @@ ENDINTERFACE.
 > [Enumerations](sub-sections/Enumerations.md)
 > describes common enumeration patterns
 > and discusses their advantages and disadvantages.
-
+>
 > Read more in _Chapter 17: Smells and Heuristics: J3: Constants versus Enums_ of [Robert C. Martin's _Clean Code_].
 
 ### If you don't use enumeration classes, group your constants
@@ -765,6 +800,7 @@ CONSTANTS:
 Makes the relation clearer than:
 
 ```ABAP
+" Anti-pattern
 CONSTANTS:
   warning      TYPE symsgty VALUE 'W',
   transitional TYPE i       VALUE 1,
@@ -875,7 +911,8 @@ DATA:
   reader TYPE REF TO /dirty/reader.
 ```
 
-> Also refer to [Don't align type clauses](#dont-align-type-clauses)
+> Also refer to [Don't align type clauses](#dont-align-type-clauses)  
+> If chaining of data declaration is used, then use one chain for each group of variables belonging together.
 
 ### Prefer REF TO to FIELD-SYMBOL
 
@@ -932,7 +969,7 @@ Similarly, speed is not an issue. As a consequence, there is no performance-rela
 - You typically use `HASHED` tables for **large tables**
 that are **filled in a single step**, **never modified**, and **read often by their key**.
 Their inherent memory and processing overhead makes hash tables only valuable
-for large amounts of data and lots of of read accesses.
+for large amounts of data and lots of read accesses.
 Each change to the table's content requires expensive recalculation of the hash,
 so don't use this for tables that are modified too often.
 
@@ -943,9 +980,7 @@ Adding, changing, or removing content requires finding the right insertion spot,
 but doesn't require adjusting the rest of the table's index.
 Sorted tables demonstrate their value only for large numbers of read accesses.
 
-- Use `STANDARD` tables for **small tables**, where indexing produces more overhead than benefit,
-and **"arrays"**, where you either don't care at all for the order of the rows,
-or you want to process them in exactly the order they were appended.
+- Use `STANDARD` tables for **small tables**, where indexing produces more overhead than benefit, and **"arrays"**, where you either don't care at all for the order of the rows, or you want to process them in exactly the order they were appended. Also, if different access to the table is needed e.g. indexed access and sorted access via `SORT` and `BINARY SEARCH`.
 
 > These are only rough guidelines.
 > Find more details in the article [_Selection of Table Category_ in the ABAP Language Help](https://help.sap.com/doc/abapdocu_751_index_htm/7.51/en-US/abenitab_kind.htm).
@@ -962,6 +997,9 @@ DATA itab TYPE STANDARD TABLE OF row_type WITH DEFAULT KEY.
 Default keys are often only added to get the newer functional statements working.
 The keys themselves in fact are usually superfluous and waste resources for nothing.
 They can even lead to obscure mistakes because they ignore numeric data types.
+The `SORT` and `DELETE ADJACENT` statements without explicit field list will resort to the primary key of the
+ internal table, which in case of usage of `DEFAULT KEY` can lead to very unexpected results when having
+ e.g. numeric fields as component of the key, in particular in combination with `READ TABLE ... BINARY` etc.
 
 Either specify the key components explicitly
 
@@ -976,6 +1014,9 @@ DATA itab1 TYPE STANDARD TABLE OF row_type WITH EMPTY KEY.
 ```
 
 > Following [Horst Keller's blog on _Internal Tables with Empty Key_](https://blogs.sap.com/2013/06/27/abap-news-for-release-740-internal-tables-with-empty-key/)
+> 
+> **Caution:** `SORT` on internal tables with `EMPTY KEY` will not sort at all,
+> but syntax warnings are issued in case the key's emptiness can be determined statically.
 
 ### Prefer INSERT INTO TABLE to APPEND TO
 
@@ -1051,7 +1092,7 @@ ENDLOOP.
 
 ```ABAP
 LOOP AT my_table REFERENCE INTO DATA(line) WHERE key = 'A'.
-``` 
+```
 
 expresses the intent clearer and shorter than
 
@@ -1062,6 +1103,36 @@ LOOP AT my_table REFERENCE INTO DATA(line).
   ENDIF.
 ENDLOOP.
 ```
+
+### Avoid unnecessary table reads
+
+> [Clean ABAP](#clean-abap) > [Content](#content) > [Tables](#tables) > [This section](#avoid-unnecessary-table-reads)
+
+In case you _expect_ a row to be there,
+read once and react to the exception,
+
+```ABAP
+TRY.
+    DATA(row) = my_table[ key = input ].
+  CATCH cx_sy_itab_line_not_found.
+    RAISE EXCEPTION NEW /clean/my_data_not_found( ).
+ENDTRY.
+```
+
+instead of littering and slowing down
+the main control flow with a double read
+
+```ABAP
+" anti-pattern
+IF NOT line_exists( my_table[ key = input ] ).
+  RAISE EXCEPTION NEW /clean/my_data_not_found( ).
+ENDTRY.
+DATA(row) = my_table[ key = input ].
+```
+
+> Besides being a performance improvement,
+> this is a special variant of the more general
+> [Focus on the happy path or error handling, but not both](#focus-on-the-happy-path-or-error-handling-but-not-both).
 
 ## Strings
 
@@ -1266,6 +1337,33 @@ ENDIF.
 
 > Read more in _Chapter 17: Smells and Heuristics: G29: Avoid Negative Conditionals_ of [Robert C. Martin's _Clean Code_].
 
+### Prefer IS NOT to NOT IS
+
+> [Clean ABAP](#clean-abap) > [Content](#content) > [Conditions](#conditions) > [This section](#prefer-is-not-to-not-is)
+
+```ABAP
+IF variable IS NOT INITIAL.
+IF variable NP 'TODO*'.
+IF variable <> 42.
+```
+
+Negation is logically equivalent
+but requires a "mental turnaround"
+that makes it harder to understand.
+
+```ABAP
+" anti-pattern
+IF NOT variable IS INITIAL.
+IF NOT variable CP 'TODO*'.
+IF NOT variable = 42.
+```
+
+> A more specific variant of
+[Try to make conditions positive](#try-to-make-conditions-positive).
+Also as described in the section
+[Alternative Language Constructs](https://help.sap.com/doc/abapdocu_753_index_htm/7.53/en-US/index.htm?file=abenalternative_langu_guidl.htm)
+in the ABAP programming guidelines.
+
 ### Consider decomposing complex conditions
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [Conditions](#conditions) > [This section](#consider-decomposing-complex-conditions)
@@ -1465,7 +1563,7 @@ DATA(object_name) = |{ class_name }\|{ interface_name }|.
 ```
 
 Some complex regular expressions become easier
-when you demonstrate the reader how they are built up from more elementary pieces.
+when you demonstrate to the reader how they are built up from more elementary pieces.
 
 ## Classes
 
@@ -1508,7 +1606,7 @@ ENDMETHOD.
 #### Prefer composition to inheritance
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [Classes](#classes) > [Classes: Object orientation](#classes-object-orientation) > [This section](#prefer-composition-to-inheritance)
- 
+
 Avoid building hierarchies of classes with inheritance. Instead, favor composition.
 
 Clean inheritance is hard to design because you need to respect rules
@@ -1526,6 +1624,9 @@ There are good applications for inheritance,
 for example the [Composite design pattern](https://en.wikipedia.org/wiki/Composite_pattern).
 Just ask yourself critically whether inheritance in your case will really provide more benefits than disadvantages.
 If in doubt, composition generally is the safer choice.
+
+> [Interfaces vs. abstract classes](sub-sections/InterfacesVsAbstractClasses.md)
+compares some details.
 
 #### Don't mix stateful and stateless in the same class
 
@@ -1561,7 +1662,7 @@ CLASS /clean/xml_converter IMPLEMENTATION.
    ENDMETHOD.
 ENDCLASS.
 ```
- 
+
 In stateful programming, we manipulate the internal state of objects
 through their methods, meaning it is _full of side effects_.
 
@@ -1579,7 +1680,7 @@ CLASS /clean/log IMPLEMENTATION.
   ENDMETHOD.
 ENDCLASS.
 ```
- 
+
 Both paradigms are okay and have their applications.
 However, _mixing_ them in the same object produces code
 that is hard to understand and sure to fail
@@ -1590,22 +1691,48 @@ Don't do that.
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [Classes](#classes) > [This section](#scope)
 
-#### Global by default, local only in exceptional cases
+#### Global by default, local only where appropriate
 
-> [Clean ABAP](#clean-abap) > [Content](#content) > [Classes](#classes) > [Scope](#scope) > [This section](#global-by-default-local-only-in-exceptional-cases)
+> [Clean ABAP](#clean-abap) > [Content](#content) > [Classes](#classes) > [Scope](#scope) > [This section](#global-by-default-local-only-where-appropriate)
 
-Work with global classes as default (meaning the ones that are visible in the dictionary).
+Work with global classes as default.
+Use local classes only where appropriate.
 
-Use local classes only in exceptional cases,
-for example for very specific data structures or to facilitate writing unit tests.
+> Global classes are the ones that are visible in the data dictionary.
+> Local classes live within an include of another development object
+> and are only visible to this other object.
+
+Local classes are suited
+
+- for very specific private data structures,
+for example an iterator for the global class's data,
+which will only ever be needed here,
+
+- to extract a complex private piece algorithm,
+for example to disentangle that special purpose multi-method
+sort-aggregate algorithm from the rest of your class's code,
+
+- to enable mocking certain aspects of the global class,
+for example by extracing all database access to a separate local class
+that can the be replaced with a test double in the unit tests.
 
 Local classes hinder reuse because they cannot be used elsewhere.
-Although they are easy to extract, people will usually fail to even find them.
+Although they are easy to extract, people will usually fail to even find them,
+leading to undesired code duplication.
+Orientation, navigation, and debugging in very long local class includes
+is tedious and annoying. 
+As ABAP locks on include level, people will not be able to work on
+different parts of the local include simultaneously
+(which would be possible if they were separate global classes).
 
-A clear indication that a local class should be made global is if you have the urge to write tests for it.
-A local class is a natural private cogwheel in its greater global class that you will usually not test.
-The need for tests indicates that the class is independent from its surrounding and so complex
-that it should become an object of its own.
+Reconsider your use of local classes if
+
+- your local include spans dozens of classes and thousands of lines of code,
+- you think about global classes as "packages" that hold other classes,
+- your global classes degenerate into empty hulls,
+- you find duplicate code repeated throughout separate local includes,
+- your developers start locking each other out and become unable to work in parallel,
+- your backlog estimates go sky-high because your teams fail to understand each other's local sub-trees.
 
 #### FINAL if not designed for inheritance
 
@@ -1757,7 +1884,7 @@ specifying the `CONSTRUCTOR` in the `PUBLIC SECTION` is required to guarantee co
 This applies only to global classes.
 In local classes, make the constructor private, as it should be.
 
-#### Prefer multiple static factory methods to optional parameters
+#### Prefer multiple static creation methods to optional parameters
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [Classes](#classes) > [Constructors](#constructors) > [This section](#prefer-multiple-static-factory-methods-to-optional-parameters)
 
@@ -1768,9 +1895,8 @@ CLASS-METHODS describe_by_object_ref IMPORTING object_ref TYPE REF TO object [..
 CLASS-METHODS describe_by_data_ref IMPORTING data_ref TYPE REF TO data [...]
 ```
 
-Don't try to "remedy" ABAP's missing support for
-[overloading](https://en.wikipedia.org/wiki/Function_overloading)
-by adding optional parameters.
+ABAP does not support [overloading](https://en.wikipedia.org/wiki/Function_overloading).
+Use name variations and not optional parameters to achieve the desired semantics.
 
 ```ABAP
 " anti-pattern
@@ -1790,15 +1916,19 @@ explains the reasoning behind this.
 Consider resolving complex constructions to a multi-step construction with the
 [Builder design pattern](https://en.wikipedia.org/wiki/Builder_pattern).
 
-#### Use descriptive names for multiple constructor methods
+#### Use descriptive names for multiple creation methods
 
-> [Clean ABAP](#clean-abap) > [Content](#content) > [Classes](#classes) > [Constructors](#constructors) > [This section](#use-descriptive-names-for-multiple-constructor-methods)
+> [Clean ABAP](#clean-abap) > [Content](#content) > [Classes](#classes) > [Constructors](#constructors) > [This section](#use-descriptive-names-for-multiple-creation-methods)
+
+Good words to start creation methods are `new_`, `create_`, and `construct_`.
+People intuitively connect them to the construction of objects.
+They also add up nicely to verb phrases like `new_from_template`, `create_as_copy`, or `create_by_name`.
 
 ```ABAP
-CLASS-METHODS describe_by_data IMPORTING p_data TYPE any [...]
-CLASS-METHODS describe_by_name IMPORTING p_name TYPE any [...]
-CLASS-METHODS describe_by_object_ref IMPORTING p_object_ref TYPE REF TO object [...]
-CLASS-METHODS describe_by_data_ref IMPORTING p_data_ref TYPE REF TO data [...]
+CLASS-METHODS new_describe_by_data IMPORTING p_data TYPE any [...]
+CLASS-METHODS new_describe_by_name IMPORTING p_name TYPE any [...]
+CLASS-METHODS new_describe_by_object_ref IMPORTING p_object_ref TYPE REF TO object [...]
+CLASS-METHODS new_describe_by_data_ref IMPORTING p_data_ref TYPE REF TO data [...]
 ```
 
 instead of something meaningless like
@@ -1810,10 +1940,6 @@ CLASS-METHODS create_2 IMPORTING p_name TYPE any [...]
 CLASS-METHODS create_3 IMPORTING p_object_ref TYPE REF TO object [...]
 CLASS-METHODS create_4 IMPORTING p_data_ref TYPE REF TO data [...]
 ```
-
-Good words to start constructors are `new_`, `create_`, and `construct_`.
-People intuitively connect them to the construction of objects.
-They also add up nicely to verb phrases like `new_from_template`, `create_as_copy`, or `create_by_name`.
 
 #### Make singletons only where multiple instances don't make sense
 
@@ -1950,6 +2076,23 @@ car->drive( speed = 50 ).
 update( asynchronous = abap_true ).
 ```
 
+#### Omit the self-reference me when calling an instance method
+
+> [Clean ABAP](#clean-abap) > [Content](#content) > [Methods](#methods) > [Calls](#calls) > [This section](#omit-the-self-reference-me-when-calling-an-instance-method)
+
+Since the self-reference `me->` is implicitly set by the system, omit it when calling an instance method
+
+```ABAP
+DATA(sum) = aggregate_values( values ).
+```
+
+instead of the needlessly longer
+
+```ABAP
+" anti-pattern
+DATA(sum) = me->aggregate_values( values ).
+```
+
 ### Methods: Object orientation
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [Methods](#methods) > [This section](#methods-object-orientation)
@@ -1966,7 +2109,7 @@ They can be mocked easier in unit tests.
 METHODS publish.
 ```
 
-Methods should be static only in exceptional cases, such as static constructor methods.
+Methods should be static only in exceptional cases, such as static creation methods.
 
 ```ABAP
 CLASS-METHODS create_instance
@@ -1988,6 +2131,9 @@ METHOD /clean/blog_post~publish.
 In clean object orientation, having a method public without an interface does not make much sense -
 with few exceptions such as enumeration classes
 which will never have an alternative implementation and will never be mocked in test cases.
+
+> [Interfaces vs. abstract classes](sub-sections/InterfacesVsAbstractClasses.md)
+describes why this also applies to classes that overwrite inherited methods.
 
 ### Parameter Number
 
@@ -2042,9 +2188,7 @@ METHODS do_one_thing IMPORTING what_i_need TYPE string.
 METHODS do_another_thing IMPORTING something_else TYPE i.
 ```
 
-instead of trying to compensate ABAP's missing support for
-[overloading](https://en.wikipedia.org/wiki/Function_overloading)
-by adding optional parameters
+to achieve the desired semantic as ABAP does not support [overloading](https://en.wikipedia.org/wiki/Function_overloading).
 
 ```ABAP
 " anti-pattern
@@ -2055,11 +2199,12 @@ METHODS do_one_or_the_other
 ```
 
 Optional parameters confuse callers:
-Which ones are really required?
-Which combinations are valid?
-Which ones exclude each other?
 
-Multiple methods avoid this confusion by giving clear guidance which parameter combinations are valid and expected.
+- Which ones are really required?
+- Which combinations are valid?
+- Which ones exclude each other?
+
+Multiple methods with specific parameters for the use case avoid this confusion by giving clear guidance which parameter combinations are valid and expected.
 
 #### Use PREFERRED PARAMETER sparingly
 
@@ -2315,7 +2460,7 @@ tend to obscure the parameter's meaning.
 update( abap_true ).  " what does 'true' mean? synchronous? simulate? commit?
 ```
 
-Splitting the method may simplify the methods' code 
+Splitting the method may simplify the methods' code
 and describe the different intentions better
 
 ```ABAP
@@ -2354,7 +2499,7 @@ Repeating a member name can even produce conflicts that need to be resolved by a
 METHODS get_name
   RETURNING
     VALUE(name) TYPE string.
-    
+
 METHOD get_name.
   name = me->name.
 ENDMETHOD.
@@ -2395,7 +2540,7 @@ ENDMETHOD.
 ```
 
 > Code inspector and Checkman point out `EXPORTING` variables that are never written.
-Use these static checks to avoid this otherwise rather obscure error source. 
+Use these static checks to avoid this otherwise rather obscure error source.
 
 ##### Take care if input and output could be the same
 
@@ -2527,7 +2672,6 @@ ENDMETHOD.
 or, to stress the validation part
 
 ```ABAP
-" anti-pattern
 METHOD append_xs.
   IF input > 0.
     result = append_xs_without_check( input ).
@@ -2581,7 +2725,7 @@ The bullets (s)he numbers are the sub-methods the method should call or the stat
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [Methods](#methods) > [Method Body](#method-body) > [This section](#keep-methods-small)
 
-Methods should be very small, optimally around 3 to 5 statements.
+Methods should have less than 20 statements, optimal around 3 to 5 statements.
 
 ```ABAP
 METHOD read_and_parse_version_filters.
@@ -2701,7 +2845,8 @@ METHOD read_customizing.
 ENDMETHOD.
 ```
 
-the statement's name is so obscure that people will probably understand the long form better:
+the statement's name doesn't reveal what happens if the condition fails,
+such that people will probably understand the long form better:
 
 ```ABAP
 METHOD read_customizing.
@@ -2712,8 +2857,8 @@ METHOD read_customizing.
 ENDMETHOD:
 ```
 
-You can also avoid the question completely by reversing the validation
-and adopting Dijkstra's single-exit pattern for structured programming
+You can avoid the question completely by reversing the validation
+and adopting a single-return control flow
 
 ```ABAP
 METHOD read_customizing.
@@ -2749,6 +2894,37 @@ people might accidentally expect it to end the method or exit the loop.
 ## Error Handling
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [This section](#error-handling)
+
+### Messages
+
+> [Clean ABAP](#clean-abap) > [Content](#content) > [Error Handling](#error-handling) > [This section](#messages)
+
+#### Make messages easy to find
+
+> [Clean ABAP](#clean-abap) > [Content](#content) > [Error Handling](#error-handling) > [Messages](#messages) > [This section](#make-messages-easy-to-find)
+
+To make messages easy to find through a where-used search from transaction SE91, use the following pattern:
+
+```ABAP
+MESSAGE e001(ad) INTO DATA(message).
+```
+
+In case variable `message` is not needed, add the pragma `##NEEDED`:
+
+```ABAP
+MESSAGE e001(ad) INTO DATA(message) ##NEEDED.
+```
+
+Avoid the following:
+
+```ABAP
+" anti-pattern
+IF 1 = 2. MESSAGE e001(ad). ENDIF.
+```
+
+This is an anti-pattern since:
+- It contains unreachable code.
+- It tests a condition which can never be true for equality.
 
 ### Return Codes
 
@@ -2883,7 +3059,7 @@ get_component_types(
 > [Clean ABAP](#clean-abap) > [Content](#content) > [Error Handling](#error-handling) > [Throwing](#throwing) > [This section](#use-own-super-classes)
 
 ```ABAP
-CLASS cx_fra_static_check DEFINITION ABSTRACT INHERITING FROM cx_dynamic_check.
+CLASS cx_fra_static_check DEFINITION ABSTRACT INHERITING FROM cx_static_check.
 CLASS cx_fra_no_check DEFINITION ABSTRACT INHERITING FROM cx_no_check.
 ```
 
@@ -2987,16 +3163,10 @@ This exception type _must_ be given in method signatures and _must_ be caught or
 It is therefore plain to see for the consumer and ensures that (s)he won't be surprised by an unexpected exception
 and will take care of reacting to the error situation.
 
-> This guideline contradicts [Robert C. Martin's _Clean Code_],
-> which recommends to resort to unchecked exceptions
-> in all cases to facilitate refactoring.
-> This is because ABAP's unchecked exceptions
-> `CX_DYNAMIC_CHECK` and `CX_NO_CHECK` behave differently than Java's:
-> While Java allows declaring unchecked exceptions on methods
-> if you want to, ABAP forbids this.
-> As a consequence,
-> Java is able to warn consumers of potential exceptions,
-> while ABAP isn't.
+> This is in sync with the [ABAP Programming Guidelines](https://help.sap.com/doc/abapdocu_751_index_htm/7.51/en-US/abenexception_category_guidl.htm)
+> but contradicts [Robert C. Martin's _Clean Code_],
+> which recommends to prefer unchecked exceptions;
+> [Exceptions](sub-sections/Exceptions.md) explains why.
 
 #### Throw CX_NO_CHECK for usually unrecoverable situations
 
@@ -3076,6 +3246,8 @@ Use this only if you are sure about that.
 #### Prefer RAISE EXCEPTION NEW to RAISE EXCEPTION TYPE
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [Error Handling](#error-handling) > [Throwing](#throwing) > [This section](#prefer-raise-exception-new-to-raise-exception-type)
+
+Note: Available from NW 7.52 onwards.
 
 ```ABAP
 RAISE EXCEPTION NEW cx_generation_error( previous = exception ).
@@ -3436,6 +3608,24 @@ not enforce writing ABAP Doc for each and everything.
 > Read more in _Chapter 4: Good Comments: Javadocs in Public APIs_ and _Chapter 4: Bad Comments:
 > Javadocs in Nonpublic Code_ of [Robert C. Martin's _Clean Code_].
 
+### Prefer pragmas to pseudo comments
+
+> [Clean ABAP](#clean-abap) > [Content](#content) > [Comments](#comments) > [This section](#prefer-pragmas-to-pseudo-comments)
+
+Prefer pragmas to pseudo comments to suppress irrelevant warnings and errors identified by the ATC. Pseudo comments 
+have mostly become obsolete and have been replaced by pragmas.
+
+```ABAP
+" pattern
+MESSAGE e001(ad) INTO DATA(message) ##NEEDED.
+
+" anti-pattern
+MESSAGE e001(ad) INTO DATA(message). "#EC NEEDED
+```
+
+Use program `ABAP_SLIN_PRAGMAS` or table `SLIN_DESC` to find the mapping between obsolete pseudo comments and the pragmas that 
+have replaced them.
+
 ## Formatting
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [This section](#formatting)
@@ -3445,6 +3635,20 @@ As ABAP's Pretty Printer doesn't cover them, some of them produce additional man
 when name lengths etc. change; if you want to avoid this, consider dropping rules like
 [Align assignments to the same object, but not to different ones](#align-assignments-to-the-same-object-but-not-to-different-ones).
 
+### Be consistent
+
+> [Clean ABAP](#clean-abap) > [Content](#content) > [This section](#be-consistent)
+
+Format all code of a project in the same way.
+Let all team members use the same formatting style.
+
+If you edit foreign code, adhere to that project's formatting style
+instead of insisting on your personal style.
+
+If you change your formatting rules over time,
+use [refactoring best practices](#how-to-refactor-legacy-code)
+to update your code over time.
+
 ### Optimize for reading, not for writing
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [Formatting](#formatting) > [This section](#optimize-for-reading-not-for-writing)
@@ -3452,7 +3656,7 @@ when name lengths etc. change; if you want to avoid this, consider dropping rule
 Developers spend most time _reading_ code.
 Actually _writing_ code takes up a way smaller portion of the day.
 
-As a consequence, you should optimize your code formatting for reading, not for writing.
+As a consequence, you should optimize your code formatting for reading and debugging, not for writing.
 
 For example, you should prefer
 
@@ -3491,7 +3695,7 @@ in a separate Transport Request or Note.
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [Formatting](#formatting) > [This section](#use-your-pretty-printer-team-settings)
 
-Always use our team settings.
+Always use your team settings.
 Specify them under
 _Menu_ > _Utilities_ > _Settings ..._ > _ABAP Editor_ > _Pretty Printer_.
 
@@ -3500,7 +3704,7 @@ as agreed in your team.
 
 > [Upper vs. Lower Case](sub-sections/UpperVsLowerCase.md) explains
 > why we do not give clear guidance for the type case of keywords.
-
+>
 > Read more in _Chapter 5: Formatting: Team Rules_ of [Robert C. Martin's _Clean Code_].
 
 ### No more than one statement per line
@@ -3535,6 +3739,7 @@ maybe because of the general verbosity of the language.
 
 > As a reminder you can configure in ADT the print margin to 120 characters,
 > which then is visualized in the code view as a vertical line.
+> Configure it under _Menu_ > _Window_ > _Preferences_ > _General_ > _Editors_ > _Text Editors_.
 
 ### Condense your code
 
@@ -3713,13 +3918,12 @@ DATA(sum) = add_two_numbers(
 Aligning the parameters elsewhere makes it hard to spot what they belong to:
 
 ```ABAP
-" anti-pattern
 DATA(sum) = add_two_numbers(
     value_1 = 5
     value_2 = 6 ).
 ```
 
-> This is on the other side the best pattern if you want to avoid the formatting to be broken by a name length change.
+However, this is the best pattern if you want to avoid the formatting to be broken by a name length change.
 
 ### Line-break multiple parameters
 
@@ -3877,7 +4081,7 @@ Stick to standards and patterns, to enable your co-workers to quickly get into t
 Don't start working on a backlog item by making a `$TMP` copy of a development object and playing around with it.
 Others won't notice these objects and therefore won't know the status of your work.
 You will probably waste a lot of time by making the working copy in the first place.
-You will also forget to delete the copy afterwards, spamming our system and dependencies.
+You will also forget to delete the copy afterwards, spamming your system and dependencies.
 (Don't believe this? Go to your development system and check your `$TMP` right now.)
 
 Also, don't start by writing a test report that calls something in a specific way,
@@ -3955,13 +4159,28 @@ This ensures that people find these tests when refactoring the class
 and allows them to run all associated tests with a single key press,
 as described in [How to execute test classes](#how-to-execute-test-classes).
 
-Put component/integration/system tests, that do not directly relate to a single class under test,
-into the local test include of a separate global class.
-Mark this global "container" class as `FOR TESTING` and `ABSTRACT`
-to avoid that it is accidentally delivered or referenced in production code.
+Put component-, integration- and system tests into the local test include of a separate global class.
+They do not directly relate to a single class under test, therefore they should not arbitrarily be
+placed in one of the involved classes, but in a separate one.  
+Mark this global test class as `FOR TESTING` and `ABSTRACT`
+to avoid that it is accidentally referenced in production code.  
 Putting tests into other classes has the danger that people overlook them
-and forget to run them when refactoring the involved classes,
-such that this choice is only second-best.
+and forget to run them when refactoring the involved classes.
+
+Therefore it is beneficial to use *test relations* to document which objects
+are tested by the test.  
+With the example below the test class `hiring_test`
+could be executed while being in the class `recruting` or `candidate` via the shrotcut `Shift-Crtl-F12` (Windows) or `Cmd-Shift-F12` (macOS).
+
+```abap
+"! @testing recruting
+"! @testing candidate
+class hiring_test defintion
+  for testing risk level dangerous duration medium
+  abstract.
+  ...
+endclass.
+```
 
 #### How to execute test classes
 
@@ -4116,13 +4335,13 @@ METHOD constructor.
 ENDMETHOD.
 ```
 
-#### Use CL_ABAP_TESTDOUBLE
+#### Consider to use the tool ABAP test double
 
-> [Clean ABAP](#clean-abap) > [Content](#content) > [Testing](#testing) > [Injection](#injection) > [This section](#use-cl_abap_testdouble)
+> [Clean ABAP](#clean-abap) > [Content](#content) > [Testing](#testing) > [Injection](#injection) > [This section](#consider-to-use-the-tool-abap-test-double)
 
 ```ABAP
 DATA(customizing_reader) = CAST /clean/customizing_reader( cl_abap_testdouble=>create( '/clean/default_custom_reader' ) ).
-cl_abap_testdouble=>configure_call( customizing_reader)->returning( sub_claim_customizing ).
+cl_abap_testdouble=>configure_call( customizing_reader )->returning( sub_claim_customizing ).
 customizing_reader->read( 'SOME_ID' ).
 ```
 
@@ -4152,15 +4371,19 @@ ENDMETHOD.
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [Testing](#testing) > [Injection](#injection) > [This section](#exploit-the-test-tools)
 
-In general, a clean programming style will let you do much of the work with standard ABAP unit tests and test doubles.
-However, there are several tools that will allow you to tackle trickier cases in elegant ways:
+In general, a clean programming style
+will let you do much of the work
+with standard ABAP unit tests and test doubles.
+However, there are tools that will allow you
+to tackle trickier cases in elegant ways:
 
-- Use the `CL_OSQL_REPLACE` service to test complex OpenSQL statements by redirecting them to a test data bin
-that can be filled with test data without interfering with the rest of the system.
+- Use the `CL_OSQL_REPLACE` service
+to test complex OpenSQL statements
+by redirecting them to a test data bin
+that can be filled with test data
+without interfering with the rest of the system.
 
 - Use the CDS test framework to test your CDS views.
-
-- Use Avalon to test AMDPs and HANA-native database procedures.
 
 #### Use test seams as temporary workaround
 
@@ -4284,13 +4507,13 @@ because it only stores data without any side effects.
 
 > [Clean ABAP](#clean-abap) > [Content](#content) > [Testing](#testing) > [Injection](#injection) > [This section](#dont-build-test-frameworks)
 
-Unit tests should be data-in-data-out, with all test data being defined on the fly as needed.
+Unit tests - in contrast to integration tests - should be data-in-data-out, with all test data being defined on the fly as needed.
 
 ```ABAP
 cl_abap_testdouble=>configure_call( test_double )->returning( data ).
 ```
 
-Don't start building frameworks that distinguish "test case IDs" to decide what data to provide.
+Don't start building frameworks that distinguish "*test case IDs*" to decide what data to provide.
 The resulting code will be so long and tangled that you won't be able to keep these tests alive in the long term.
 
 ```ABAP
@@ -4359,7 +4582,7 @@ If the given or then sections get so long
 that you cannot visually separate the three sections anymore, extract sub-methods.
 Blank lines or comments as separators may look good at first glance
 but don't really reduce the visual clutter.
-Still they are helpful for the reader to and the novice test writer to separate the section
+Still they are helpful for the reader and the novice test writer to separate the sections.
 
 #### "When" is exactly one call
 
@@ -4372,7 +4595,7 @@ METHOD rejects_invalid_input.
   " when
   DATA(is_valid) = cut->is_valid_input( 'SOME_RANDOM_ENTRY' ).
   " then
-  cl_abap_unit_assert=>assert_true( is_valid ).
+  cl_abap_unit_assert=>assert_false( is_valid ).
 ENDMETHOD.
 ```
 
@@ -4462,7 +4685,7 @@ METHOD rejects_invalid_input.
   " when
   DATA(is_valid) = cut->is_valid_input( 'SOME_RANDOM_ENTRY' ).
   " then
-  cl_abap_unit_assert=>assert_true( is_valid ).
+  cl_abap_unit_assert=>assert_false( is_valid ).
 ENDMETHOD.
 ```
 
@@ -4478,7 +4701,7 @@ METHOD rejects_invalid_input.
   " when
   DATA(is_valid) = cut->is_valid_input( 'SOME_RANDOM_ENTRY' ).
   " then
-  cl_abap_unit_assert=>assert_true( is_valid ).
+  cl_abap_unit_assert=>assert_false( is_valid ).
   cl_abap_unit_assert=>assert_not_initial( log->get_messages( ) ).
   cl_abap_unit_assert=>assert_equals( act = sy-langu
                                       exp = 'E' ).
@@ -4599,7 +4822,7 @@ METHODS assert_contains
   IMPORTING
     actual_entries TYPE STANDARD TABLE OF entries_tab
     expected_key   TYPE key_structure.
-     
+
 METHOD assert_contains.
   TRY.
       actual_entries[ key = expected_key ].
