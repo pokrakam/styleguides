@@ -871,7 +871,7 @@ There is a historic tendency in ABAP to wrap every literal in constants with nam
 that merely repeat their content or even their type:
 ```ABAP
 " anti-pattern 
-DATA: 
+CONSTANTS: 
   c_01 TYPE spart VALUE '01',
   c_mmsta TYPE mmsta VALUE '90'.
 ```
@@ -885,7 +885,7 @@ CONSTANTS c_status_inactive TYPE mmsta VALUE '90'.
 
 Literals are also perfectly acceptable if the value is commonly understood.
 ```ABAP
-SELECT count(*) from swwwihead
+SELECT count(*) FROM swwwihead
   WHERE status = 'ERROR'
   INTO @DATA(error_count).
 ```
